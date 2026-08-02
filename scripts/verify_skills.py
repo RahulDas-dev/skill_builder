@@ -44,7 +44,8 @@ MANGLED_DUNDER_RE = re.compile(
 )
 REF_PATH_RE = re.compile(r"\b(?:references|templates)/[\w.\-/]+")
 GOTCHA_KEYWORDS_RE = re.compile(
-    r"(gotcha|anti-pattern|antipattern|known issue|warning|pitfall|consideration|rules?)\b", re.IGNORECASE
+    r"(gotchas?|anti-patterns?|antipatterns?|known issues?|warnings?|pitfalls?|considerations?|rules?)\b",
+    re.IGNORECASE,
 )
 OVERVIEW_KEYWORDS_RE = re.compile(r"^(overview|quick start|when to\b)", re.IGNORECASE)
 
@@ -231,6 +232,21 @@ def check_overview_section(skill_md: Path, parsed: ParsedMarkdown, findings: lis
         )
 
 
+MAX_FILE_LINES = 510
+
+
+def check_file_length(md_file: Path, parsed: ParsedMarkdown, findings: list[Finding]) -> None:
+    line_count = parsed.raw_text.count("\n") + 1
+    if line_count > MAX_FILE_LINES:
+        findings.append(
+            Finding(
+                md_file,
+                f"{line_count} lines, over the {MAX_FILE_LINES}-line guideline - "
+                "consider splitting into another references/ file",
+            )
+        )
+
+
 def check_gotchas_section(skill_dir: Path, parsed_files: dict[Path, ParsedMarkdown], findings: list[Finding]) -> None:
     for parsed in parsed_files.values():
         if any(GOTCHA_KEYWORDS_RE.search(h.text) for h in parsed.headings):
@@ -382,6 +398,7 @@ def verify_skill(skill_dir: Path) -> SkillReport:
         check_transcription_artifacts(md_file, parsed, report.findings)
         check_tables(md_file, parsed, report.findings)
         check_code_blocks(md_file, parsed, report.findings)
+        check_file_length(md_file, parsed, report.findings)
 
     return report
 
