@@ -1,6 +1,6 @@
 # AG-UI Event Structures Reference
 
-Complete JSON shapes for every AG-UI event. All events serialize to camelCase via `to_dict()`.
+Complete JSON shapes for every AG-UI event. Events are Pydantic models (`ConfiguredBaseModel`) with `alias_generator=to_camel` — call `event.model_dump(by_alias=True)` to get camelCase JSON; plain `model_dump()` returns snake_case field names.
 
 ## Common Fields (All Events)
 
@@ -59,6 +59,7 @@ Complete JSON shapes for every AG-UI event. All events serialize to camelCase vi
 | `threadId` | `string` | Yes | Session identifier |
 | `runId` | `string` | Yes | Run identifier |
 | `result` | `any?` | No | Final result data |
+| `outcome` | `object?` | No | `{"type": "success"}` or `{"type": "interrupt", "interrupts": [...]}` — optional, for interrupt-aware runs. Omitted by producers written before this was added |
 | `rawEvent` | `object?` | No | Contains `usage` and `iterations` in this framework |
 
 ### RUN_ERROR
@@ -127,7 +128,8 @@ Complete JSON shapes for every AG-UI event. All events serialize to camelCase vi
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `messageId` | `string` | Yes | Unique message identifier |
-| `role` | `string` | Yes | One of: `"developer"`, `"system"`, `"assistant"`, `"user"` |
+| `role` | `string` | Yes | One of: `"developer"`, `"system"`, `"assistant"`, `"user"` — defaults to `"assistant"` |
+| `name` | `string?` | No | Optional display name for the message sender |
 
 ### TEXT_MESSAGE_CONTENT
 
@@ -233,7 +235,6 @@ Complete JSON shapes for every AG-UI event. All events serialize to camelCase vi
   "messageId": "result-uuid-5678",
   "toolCallId": "tc-abc123",
   "content": "Result: 42",
-  "isError": false,
   "role": "tool",
   "timestamp": 1741564800200
 }
@@ -245,8 +246,9 @@ Complete JSON shapes for every AG-UI event. All events serialize to camelCase vi
 | `messageId` | `string` | Yes | Unique result message ID |
 | `toolCallId` | `string` | Yes | ID of the tool call this result answers |
 | `content` | `string` | Yes | Tool execution result (always string) |
-| `isError` | `boolean` | No | `true` if tool execution failed (default: `false`) |
 | `role` | `string?` | No | Always `"tool"` when present |
+
+> **No `isError` field on this event.** The protocol has no error flag on `TOOL_CALL_RESULT` — a failed tool call is reported via the `error` field on the corresponding `ToolMessage` (`error: string | null`) when a `MESSAGES_SNAPSHOT` is emitted, not on the streaming event itself. If your backend needs to signal failure inline, encode it in `content` (e.g. a JSON error payload) rather than inventing a field the frontend won't receive from a spec-compliant emitter.
 
 ### TOOL_CALL_CHUNK (Convenience)
 
@@ -255,6 +257,7 @@ Complete JSON shapes for every AG-UI event. All events serialize to camelCase vi
   "type": "TOOL_CALL_CHUNK",
   "toolCallId": "tc-abc123",
   "toolCallName": "calculator",
+  "parentMessageId": "msg-uuid-1234",
   "delta": "{\"a\": 5}",
   "timestamp": 1741564800130
 }
@@ -411,13 +414,12 @@ Complete JSON shapes for every AG-UI event. All events serialize to camelCase vi
 
 ## Serialization Rules
 
-1. **Python → JSON:** All fields serialize to camelCase (`tool_call_id` → `toolCallId`)
+1. **Python → JSON:** Fields serialize to camelCase only when you call `model_dump(by_alias=True)` (`tool_call_id` → `toolCallId`) — plain `model_dump()` returns snake_case
 2. **Timestamps:** Unix milliseconds (`int(time.time() * 1000)`)
 3. **Optional fields:** Omitted from output when `None` (not serialized as `null`)
-4. **isError:** Only included when `true`
-5. **to_dict():** Every event has a `to_dict()` method for JSON serialization
+4. **No `to_dict()` method:** Events are Pydantic models (`ConfiguredBaseModel`, `model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)`) — use `model_dump(by_alias=True)` / `model_dump_json(by_alias=True)`, not a custom serializer
 
-### Python Dataclass $\rightarrow$ JSON Mapping
+### Python Field → JSON Key Mapping
 
 | Python Field | JSON Key |
 | --- | --- |
@@ -429,7 +431,6 @@ Complete JSON shapes for every AG-UI event. All events serialize to camelCase vi
 | `tool_call_name` | `toolCallName` |
 | `parent_message_id` | `parentMessageId` |
 | `step_name` | `stepName` |
-| `is_error` | `isError` |
 | `raw_event` | `rawEvent` |
 | `activity_type` | `activityType` |
 | `encrypted_value` | `encryptedValue` |

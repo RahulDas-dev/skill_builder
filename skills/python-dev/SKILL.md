@@ -1,6 +1,7 @@
 ---
 name: python-dev
-description: Pythonic idioms, PEP 8 standards, type hints, and best practices for building robust, efficient, and maintainable Python applications. Use when designing packages, implementing type hints, or establishing coding standards.
+description: Pythonic idioms, PEP 8 standards, type hints, and best practices for building robust, efficient, and maintainable Python applications. Use when designing packages, implementing type hints, establishing coding standards, or writing/reviewing general-purpose Python code. Do NOT use for framework-specific project layout or directory structure conventions.
+license: Personal use only — not for redistribution.
 ---
 
 # Python Development Patterns
@@ -11,6 +12,17 @@ description: Pythonic idioms, PEP 8 standards, type hints, and best practices fo
 * Designing Python packages/modules
 * Implementing type hints or logging
 * Establishing or enforcing coding standards
+
+## Dependencies
+
+| Tool | Role | Required |
+| --- | --- | --- |
+| Python 3.13+ | Interpreter — modern type-hint syntax (`str or None` unions, `list[str]`) needs 3.10+, this skill targets 3.13+ | Yes |
+| `uv` | Package manager and task runner — replaces pip/venv/poetry | Yes |
+| `ruff` | Linter + formatter — full config in `references/ruff-config.md` | Yes |
+| `pyclean` | Cache cleanup (`__pycache__`, `.pyc`) after code changes | Recommended |
+
+Nothing else is assumed preinstalled — `uv sync` installs project dependencies from `pyproject.toml`.
 
 ## Package Manager: uv (NOT pip)
 

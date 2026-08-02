@@ -11,6 +11,8 @@ pip install ag-ui-protocol
 
 ```
 
+**Verified against:** `ag-ui-protocol` v0.1.19 — latest on PyPI as of 2026-08-02, released 2026-06-02 (`requires-python >=3.9`, `pydantic>=2.11.2`). Pre-1.0, check `ag_ui.core.events`/`ag_ui.core.types` in your installed version if something here looks stale.
+
 ## Importing Event Classes
 
 ```python
@@ -85,7 +87,8 @@ async def event_generator(req: ChatRequest):
     msg_id = str(uuid.uuid4())
 
     def emit(event: BaseEvent) -> str:
-        return f"data: {json.dumps(event.model_dump())}\n\n"
+        # by_alias=True is required — plain model_dump() returns snake_case field names
+        return f"data: {json.dumps(event.model_dump(by_alias=True))}\n\n"
 
     yield emit(RunStartedEvent(thread_id=thread_id, run_id=run_id, timestamp=_ts()))
     yield emit(StepStartedEvent(step_name="generate", timestamp=_ts()))
@@ -178,11 +181,15 @@ yield CustomEvent(name="source_citation", value={"url": "...", "title": "..."})
 
 ## Serialization
 
-Use `model_dump()` (Pydantic v2) or `to_dict()` for serialization:
+Events are Pydantic v2 models (`ConfiguredBaseModel`, `alias_generator=to_camel`, `populate_by_name=True`). There is no `to_dict()` method — use `model_dump(by_alias=True)` (or `model_dump_json(by_alias=True)`). **Without `by_alias=True` you get snake_case**, not the camelCase the frontend expects:
 
 ```python
 event = ToolCallStartEvent(tool_call_id="tc-1", tool_call_name="calculator")
+
 print(json.dumps(event.model_dump()))
+# {"type": "TOOL_CALL_START", "tool_call_id": "tc-1", "tool_call_name": "calculator", "timestamp": ...}
+
+print(json.dumps(event.model_dump(by_alias=True)))
 # {"type": "TOOL_CALL_START", "toolCallId": "tc-1", "toolCallName": "calculator", "timestamp": ...}
 
 ```
@@ -190,8 +197,8 @@ print(json.dumps(event.model_dump()))
 ## Key Backend Considerations
 
 1. **Event ordering matters** — always yield START before CONTENT before END
-2. `model_dump()` handles serialization — never manually construct event JSON
+2. `model_dump(by_alias=True)` handles serialization — never manually construct event JSON (and don't forget `by_alias=True`, or the frontend gets snake_case)
 3. Every run needs a unique `run_id` — generate with `uuid.uuid4()` if not provided by client
-4. Always Close with `RUN_FINISHED` or `RUN_ERROR` — client need a terminal oevent to stop listening
-5. Timestamps are miliseconds since epoch —  use `int(time.time()*1000)`
-6. set `X-Accel-Buffereing: no` — prevents nginx from buffereings SSE responses 
+4. Always close with `RUN_FINISHED` or `RUN_ERROR` — clients need a terminal event to stop listening
+5. Timestamps are milliseconds since epoch — use `int(time.time()*1000)`
+6. set `X-Accel-Buffering: no` — prevents nginx from buffering SSE responses

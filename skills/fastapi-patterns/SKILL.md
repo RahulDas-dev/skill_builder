@@ -4,9 +4,36 @@ description: >
   FastAPI project structure, directory organization, and file naming conventions.
   Use when creating new routes, services, components, or any new directory/file in a FastAPI project.
   Defines what lives where and why — the structural DNA of the project.
+  Do NOT use for general-purpose Python conventions outside a FastAPI project, or for
+  protocol-specific streaming formats (e.g. typed event schemas) that define their own
+  SSE termination/error conventions — this skill's generic SSE rules apply only when no
+  such protocol is in play.
+license: Personal use only — not for redistribution.
 ---
 
 # FastAPI Project Structure & Patterns
+
+## When to Use This Skill
+
+* Scaffolding a new route, service, component, config concern, or startup step in a FastAPI project
+* Deciding which directory/file a piece of logic belongs in (`routes/` vs `services/` vs `db/` vs `startops/`)
+* Reviewing whether an existing FastAPI project follows consistent structure and naming
+* Adding SSE streaming endpoints, dependency injection, or error-handling to a route
+
+## Dependencies
+
+| Package | Role | Required |
+| --- | --- | --- |
+| `fastapi` | Web framework — routing, DI, `StreamingResponse` | Yes |
+| `pydantic` v2 | `BaseModel` request/response models, `Field`, `alias_generators.to_camel` | Yes |
+| `pydantic-settings` | `BaseSettings` config classes (see `references/configs.md`) | Yes |
+| `sqlalchemy` (async, 2.0-style `Mapped`/`mapped_column`) | ORM layer (`db/`) | Yes, if using a database |
+| `asyncpg` / `aiosqlite` | Async DB drivers for Postgres / SQLite respectively | Yes, matching your `DB_TYPE` |
+| `python-dotenv` | Loads the `.config` env file at startup (`startops/set_env.py`) | Yes |
+| `sse-starlette` | Alternative SSE response wrapper (see `references/routes.md`) | Optional |
+| `uvicorn` | ASGI server to run the app | Yes, for local/dev running |
+
+This skill documents *conventions* on top of these libraries, not the libraries themselves — see each library's own docs for API details.
 
 ## Project Layout
 

@@ -13,6 +13,8 @@ pnpm install @ag-ui/encoder  # SSE encoding/decoding utilities
 ```
 
 > **In this repo:** `@ag-ui/core` is already installed in both frontends. Always import types from `@ag-ui/core` — it is the canonical type source. `@ag-ui/client` re-exports the authoritative package for type inference and IDE autocompletion.
+>
+> **Verified against:** `@ag-ui/core` v0.0.57 — latest on npm as of 2026-08-02. Pre-1.0, check the installed version's types if something here looks stale.
 
 | Package | Role | Docs |
 | --- | --- | --- |
@@ -88,7 +90,9 @@ eventSource.onmessage = (event) => {
       break;
 
     case "TOOL_CALL_RESULT":
-      updateToolResult(data.toolCallId, data.content, data.isError);
+      // No isError field on this event — the protocol carries tool failure on the
+      // message's `error` field (see MESSAGES_SNAPSHOT), not on TOOL_CALL_RESULT.
+      updateToolResult(data.toolCallId, data.content);
       break;
 
     case "RUN_FINISHED":
@@ -158,7 +162,6 @@ interface ToolCall {
   name: string;
   args: string;
   result?: string;
-  isError?: boolean;
   isComplete: boolean;
 }
 
@@ -224,7 +227,7 @@ function useAgentStream() {
         setToolCalls((prev) =>
           prev.map((tc) =>
             tc.id === event.toolCallId
-              ? { ...tc, result: event.content, isError: event.isError }
+              ? { ...tc, result: event.content }
               : tc
           )
         );
@@ -284,14 +287,14 @@ function AgentChat() {
 
   return (
     <div>
-      {reasoning && <CollapsibleThinking text="{reasoning}"/>}
+      {reasoning && <CollapsibleThinking text={reasoning} />}
       {messages.map((m) => (
-        <MessageBubble content="{m.content}" key="{m.id}" role="{m.role}" streaming="{!m.isComplete}"/>
+        <MessageBubble content={m.content} key={m.id} role={m.role} streaming={!m.isComplete} />
       ))}
       {toolCalls.map((tc) => (
-        <ToolCallCard args="{tc.args}" key="{tc.id}" name="{tc.name}" result="{tc.result}"/>
+        <ToolCallCard args={tc.args} key={tc.id} name={tc.name} result={tc.result} />
       ))}
-      <ChatInput disabled="{isRunning}" onSend="{sendMessage}"/>
+      <ChatInput disabled={isRunning} onSend={sendMessage} />
     </div>
   );
 }
@@ -332,7 +335,7 @@ case "STATE_DELTA":
 2. `messageId` **correlation** — always match START/CONTENT/END by `messageId`
 3. `toolCallId` **correlation** — match TOOL_CALL_START through TOOL_CALL_RESULT by `toolCallId`
 4. `delta` **is incremental** — concatenate deltas, don't replace
-5. `isError` **on TOOL_CALL_RESULT** — render tool failures differently
+5. **No `isError` field on `TOOL_CALL_RESULT`** — a failed tool call is reported via the `error` field on the corresponding tool message (delivered in `MESSAGES_SNAPSHOT`), not on the streaming event; correlate by `toolCallId` if you need to render failures differently
 6. `RUN_FINISHED` **signals completion** — close EventSource, stop loading indicators
 7. `STEP_FINISHED.rawEvent.usage` — extract token counts for cost display
 8. **Reasoning events are optional** — not all models/providers emit them

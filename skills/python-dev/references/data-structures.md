@@ -82,7 +82,7 @@ total = sum([x * x for x in range(1_000_000)])
 ## Generator Functions
 
 ```python
-from typing import Iterator
+from collections.abc import Iterator
 
 def read_large_file(path: str) -> Iterator[str]:
     """Yield lines one at a time - O(1) memory."""
@@ -95,7 +95,7 @@ for line in read_large_file("huge.txt"):
 
 ```
 
-## Memory Efficiency with **slots**
+## Memory Efficiency with `__slots__`
 
 ```python
 # X Regular class - uses __dict__ for each instance

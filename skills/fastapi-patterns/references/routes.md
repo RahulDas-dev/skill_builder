@@ -386,6 +386,8 @@ if not updates:
     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No updates provided")
 
 # 500 — unexpected (preserve chain with from e)
+try:
+    ...
 except Exception as e:
     logger.exception("Session id: %s | Operation failed", session_id)
     raise HTTPException(status_code=500, detail=str(e)) from e
